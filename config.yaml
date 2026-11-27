@@ -19,5 +19,5 @@ criteria:
     postal_prefixes: ["47"]    # Pasir Ris, 51xxxx
     towns: [Bedok, Eunos]         # for posts that give a street but no postal code
   exclude_online: true         # drops any post mentioning online, Zoom or virtual
-  exclude_keywords: []
+  exclude_keywords: ["NIE teacher", "MOE teacher", "MOE/NIE"]
   # No minimum rate: rates are negotiable.
