@@ -9,16 +9,15 @@ sources:
   - tuition_east
   - nanyangtuitionjobs
   - eduaidtuition
-  # - sgtuition           # this is a user account, not a channel, so it has no preview
   - tuitionassignmentsSG
 
 criteria:
   # Any one of these words, matched as a whole word, case-insensitive.
-  levels: [JC, JC1, JC2, J1, J2, Junior College, A Level, H1, H2]
-  subjects: [Math, Maths, Mathematics, Physics]
+  levels: [P4, P5, P6, Primary 4, Primary 5, Primary 6, Pri 4, Pri 5, Pri 6]  
+  subjects: [Math, Maths, Mathematics, Science, English]
   locations:
-    postal_prefixes: ["51"]    # Pasir Ris, 51xxxx
-    towns: [Pasir Ris]         # for posts that give a street but no postal code
+    postal_prefixes: ["47"]    # Pasir Ris, 51xxxx
+    towns: [Bedok, Eunos]         # for posts that give a street but no postal code
   exclude_online: true         # drops any post mentioning online, Zoom or virtual
-  exclude_keywords: ["female tutor only"]
+  exclude_keywords: []
   # No minimum rate: rates are negotiable.
