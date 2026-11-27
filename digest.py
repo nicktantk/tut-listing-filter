@@ -7,6 +7,7 @@ but never skips them.
 from __future__ import annotations
 
 import html
+from dataclasses import replace
 import json
 import os
 import sys
@@ -17,6 +18,7 @@ import requests
 import yaml
 
 from filters import matches
+from jobs import split_jobs, summary_lines
 from reader import Post, fetch_new_posts
 
 ROOT = Path(__file__).parent
@@ -24,7 +26,7 @@ CONFIG_PATH = ROOT / "config.yaml"
 STATE_PATH = ROOT / "state.json"
 SGT = timezone(timedelta(hours=8))
 TELEGRAM_LIMIT = 4000  # Telegram allows 4096 characters per message
-PREVIEW_LINES = 4
+PREVIEW_LINES = 6
 
 
 def load_state() -> dict[str, int]:
@@ -48,8 +50,7 @@ def collect(channel: str, last_id: int | None, now: datetime) -> tuple[list[Post
 
 
 def format_entry(n: int, post: Post) -> str:
-    lines = [l for l in post.text.splitlines() if l.strip()][:PREVIEW_LINES]
-    body = "\n".join(html.escape(l) for l in lines)
+    body = "\n".join(html.escape(l) for l in summary_lines(post.text, PREVIEW_LINES))
     return f"<b>{n}.</b> {body}\n<a href=\"{post.link}\">Open post</a> · @{html.escape(post.channel)}"
 
 
@@ -109,7 +110,9 @@ def main() -> int:
             failed.append(channel)
             continue
         checked += len(posts)
-        matched += [p for p in posts if matches(p, criteria)]
+        for post in posts:
+            # A post can hold several jobs; match and show each one on its own.
+            matched += [job for job in (replace(post, text=t) for t in split_jobs(post.text)) if matches(job, criteria)]
         if next_id is not None:
             new_state[key] = next_id
         if capped:

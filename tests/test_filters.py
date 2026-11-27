@@ -1,11 +1,14 @@
-from pathlib import Path
-
-import yaml
-
 from filters import matches
 from reader import Post
 
-CRITERIA = yaml.safe_load((Path(__file__).parent.parent / "config.yaml").read_text())["criteria"]
+# Fixed criteria so these tests don't change when you edit config.yaml.
+CRITERIA = {
+    "levels": ["JC", "JC1", "JC2", "J1", "J2", "Junior College", "A Level", "H1", "H2"],
+    "subjects": ["Math", "Maths", "Mathematics", "Physics"],
+    "locations": {"postal_prefixes": ["51"], "towns": ["Pasir Ris"]},
+    "exclude_online": True,
+    "exclude_keywords": ["female tutor only"],
+}
 
 
 def p(text):

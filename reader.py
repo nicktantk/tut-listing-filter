@@ -30,6 +30,17 @@ class Post:
     link: str
 
 
+def clean_text(div) -> str:
+    """The post's text with its real line breaks. Inline tags (bold, emoji) don't add breaks."""
+    for br in div.find_all("br"):
+        br.replace_with("\n")
+    lines = [line.strip() for line in div.get_text().splitlines()]
+    text = "\n".join(lines)
+    while "\n\n\n" in text:
+        text = text.replace("\n\n\n", "\n\n")
+    return text.strip()
+
+
 def parse_page(html: str, channel: str) -> list[Post]:
     """Return the posts on one preview page, in page order (oldest first)."""
     soup = BeautifulSoup(html, "html.parser")
@@ -47,7 +58,7 @@ def parse_page(html: str, channel: str) -> list[Post]:
             if not div.find_parent(class_="tgme_widget_message_reply"):
                 text_div = div
                 break
-        text = text_div.get_text("\n", strip=True) if text_div else ""
+        text = clean_text(text_div) if text_div else ""
 
         date = None
         time_tag = msg.select_one("a.tgme_widget_message_date time[datetime]")
