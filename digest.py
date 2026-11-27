@@ -17,7 +17,7 @@ import requests
 import yaml
 
 from filters import matches
-from reader import Post, fetch_new_posts, latest_posts
+from reader import Post, fetch_new_posts
 
 ROOT = Path(__file__).parent
 CONFIG_PATH = ROOT / "config.yaml"
@@ -37,16 +37,14 @@ def save_state(state: dict[str, int]) -> None:
     STATE_PATH.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
 
 
-def collect(channel: str, last_id: int | None, now: datetime) -> tuple[list[Post], int | None]:
-    """New posts since last_id, and the ID to store next."""
+def collect(channel: str, last_id: int | None, now: datetime) -> tuple[list[Post], int | None, bool]:
+    """New posts since last_id, the ID to store next, and whether the page cap was hit."""
     if last_id is not None:
-        posts = fetch_new_posts(channel, last_id)
-        return posts, max([p.id for p in posts], default=last_id)
+        posts, capped = fetch_new_posts(channel, after_id=last_id)
+        return posts, max([p.id for p in posts], default=last_id), capped
     # First time we see this channel: take the last 24 hours so the first digest isn't empty.
-    page = latest_posts(channel)
-    cutoff = now - timedelta(hours=24)
-    posts = [p for p in page if p.date is None or p.date >= cutoff]
-    return posts, max([p.id for p in page], default=None)
+    posts, capped = fetch_new_posts(channel, since=now - timedelta(hours=24))
+    return posts, max([p.id for p in posts], default=None), capped
 
 
 def format_entry(n: int, post: Post) -> str:
@@ -100,11 +98,12 @@ def main() -> int:
     matched: list[Post] = []
     checked = 0
     failed: list[str] = []
+    capped_channels: list[str] = []
 
     for channel in config["sources"]:
         key = channel.lstrip("@").lower()
         try:
-            posts, next_id = collect(channel.lstrip("@"), state.get(key), now)
+            posts, next_id, capped = collect(channel.lstrip("@"), state.get(key), now)
         except Exception as exc:  # one broken channel shouldn't stop the digest
             print(f"[warn] {channel}: {exc}", file=sys.stderr)
             failed.append(channel)
@@ -113,11 +112,19 @@ def main() -> int:
         matched += [p for p in posts if matches(p, criteria)]
         if next_id is not None:
             new_state[key] = next_id
-        print(f"{channel}: {len(posts)} new")
+        if capped:
+            capped_channels.append(channel)
+        print(f"{channel}: {len(posts)} new{' (page cap reached, older posts skipped)' if capped else ''}")
 
     messages = build_messages(matched, checked, now)
     if failed:
         messages[-1] += "\n\nCouldn't read: " + ", ".join(html.escape(c) for c in failed)
+    if capped_channels:
+        messages[-1] += (
+            "\n\nToo many posts to read them all in: "
+            + ", ".join(html.escape(c) for c in capped_channels)
+            + ". Consider running more often."
+        )
     send(messages, token, chat_id)
     save_state(new_state)
     print(f"Sent {len(matched)} matches from {checked} posts.")

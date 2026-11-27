@@ -10,12 +10,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
+import time
+
 import requests
 from bs4 import BeautifulSoup
 
 PREVIEW_URL = "https://t.me/s/{channel}"
 USER_AGENT = "Mozilla/5.0 (compatible; tuition-digest/1.0)"
-MAX_PAGES = 10  # safety cap per channel per run (about 20 posts a page)
+MAX_PAGES = 50  # safety cap per channel per run (about 20 posts a page, so ~1,000 posts)
+PAGE_DELAY = 0.5  # seconds between page loads, to be polite to t.me
 
 
 @dataclass
@@ -80,24 +83,34 @@ def fetch_page(channel: str, before: Optional[int] = None, session=None) -> str:
     return resp.text
 
 
-def fetch_new_posts(channel: str, after_id: int, fetch=fetch_page) -> list[Post]:
-    """All posts with id > after_id, oldest first. Pages back with ?before= as needed."""
+def fetch_new_posts(
+    channel: str,
+    after_id: int = 0,
+    since: Optional[datetime] = None,
+    fetch=fetch_page,
+    delay: float = PAGE_DELAY,
+) -> tuple[list[Post], bool]:
+    """Posts with id > after_id (and, if given, dated at or after `since`), oldest first.
+
+    Pages back with ?before= until it passes after_id or `since`. Returns (posts, capped),
+    where capped is True if MAX_PAGES ran out first, meaning older posts were left unread.
+    """
     found: dict[int, Post] = {}
     before = None
-    for _ in range(MAX_PAGES):
+    for page_no in range(MAX_PAGES):
+        if page_no and delay:
+            time.sleep(delay)
         page = parse_page(fetch(channel, before), channel)
         if not page:
-            break
+            return [found[i] for i in sorted(found)], False
         for post in page:
-            if post.id > after_id:
+            if post.id > after_id and (since is None or post.date is None or post.date >= since):
                 found[post.id] = post
-        oldest = page[0].id
-        if oldest <= after_id + 1:
-            break
-        before = oldest
-    return [found[i] for i in sorted(found)]
+        oldest = page[0]
+        if oldest.id <= after_id + 1:
+            return [found[i] for i in sorted(found)], False
+        if since is not None and oldest.date is not None and oldest.date < since:
+            return [found[i] for i in sorted(found)], False
+        before = oldest.id
+    return [found[i] for i in sorted(found)], True
 
-
-def latest_posts(channel: str, fetch=fetch_page) -> list[Post]:
-    """The newest page of posts, used to start tracking a channel."""
-    return parse_page(fetch(channel, None), channel)
