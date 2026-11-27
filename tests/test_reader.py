@@ -47,11 +47,40 @@ def test_fetch_new_posts_pages_back_until_last_id():
         calls.append(before)
         return page(channel, pages[before])
 
-    posts = fetch_new_posts("c", 30, fetch=fake_fetch)
+    posts, capped = fetch_new_posts("c", 30, fetch=fake_fetch, delay=0)
     assert [p.id for p in posts] == list(range(31, 61))
     assert calls == [None, 41]  # stopped once it reached ID 30
+    assert not capped
 
 
 def test_fetch_new_posts_nothing_new():
-    posts = fetch_new_posts("c", 60, fetch=lambda c, b: page(c, list(range(41, 61))))
+    posts, capped = fetch_new_posts("c", 60, fetch=lambda c, b: page(c, list(range(41, 61))), delay=0)
     assert posts == []
+    assert not capped
+
+
+def test_fetch_new_posts_reports_cap(monkeypatch):
+    import reader
+
+    monkeypatch.setattr(reader, "MAX_PAGES", 2)
+    pages = {None: list(range(41, 61)), 41: list(range(21, 41)), 21: list(range(1, 21))}
+    posts, capped = fetch_new_posts("c", 0, fetch=lambda c, b: page(c, pages[b]), delay=0)
+    assert [p.id for p in posts] == list(range(21, 61))
+    assert capped
+
+
+def test_fetch_since_stops_at_cutoff():
+    from datetime import datetime, timezone
+
+    # Every fixture post is dated 2026-11-27T03:59:12Z, so a later cutoff excludes all of them.
+    calls = []
+
+    def fake_fetch(c, b):
+        calls.append(b)
+        return page(c, list(range(41, 61)))
+
+    posts, capped = fetch_new_posts(
+        "c", since=datetime(2026, 11, 27, 5, tzinfo=timezone.utc), fetch=fake_fetch, delay=0
+    )
+    assert posts == [] and not capped
+    assert calls == [None]
