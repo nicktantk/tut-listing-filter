@@ -28,9 +28,9 @@ users:
         postal_prefixes: ["51"]    # Pasir Ris; used whenever the job gives a postal code
         towns: [Pasir Ris]         # only used when the job has no postal code
       exclude_online: true         # drops any job mentioning online, Zoom or virtual
-      exclude_keywords: ["female tutor only"]
+      exclude_keywords: ["female tutor only", "NIE teacher", "MOE teacher", "MOE/NIE"]
 
-  - name: friend                   # rename to your friend's name (and use it in CHAT_IDS)
+  - name: chloe
     criteria:
       levels: [P4, P5, P6, Primary 4, Primary 5, Primary 6, Pri 4, Pri 5, Pri 6]
       subjects: [Math, Maths, Mathematics, Science, English]
