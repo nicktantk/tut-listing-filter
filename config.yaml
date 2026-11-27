@@ -11,13 +11,31 @@ sources:
   - eduaidtuition
   - tuitionassignmentsSG
 
-criteria:
-  # Any one of these words, matched as a whole word, case-insensitive.
-  levels: [P4, P5, P6, Primary 4, Primary 5, Primary 6, Pri 4, Pri 5, Pri 6]  
-  subjects: [Math, Maths, Mathematics, Science, English]
-  locations:
-    postal_prefixes: ["47"]    # used whenever the job gives a postal code
-    towns: [Bedok, Eunos]      # only used when the job has no postal code
-  exclude_online: true         # drops any post mentioning online, Zoom or virtual
-  exclude_keywords: ["NIE teacher", "MOE teacher", "MOE/NIE"]
-  # No minimum rate: rates are negotiable.
+# One entry per person. Each person gets their own digest.
+# Chat IDs are NOT kept here (this repo is public). They go in the CHAT_IDS secret,
+# one "name: id" line per person, using the same name as below.
+# The first person also uses the older CHAT_ID secret if they're not in CHAT_IDS.
+# Anyone without a chat ID is skipped.
+#
+# How each filter works: every list matches any one of its words, as a whole word,
+# ignoring case. Delete a line to switch that filter off.
+users:
+  - name: nicholas
+    criteria:
+      levels: [JC, JC1, JC2, J1, J2, Junior College, A Level, H1, H2]
+      subjects: [Math, Maths, Mathematics, Physics]
+      locations:
+        postal_prefixes: ["51"]    # Pasir Ris; used whenever the job gives a postal code
+        towns: [Pasir Ris]         # only used when the job has no postal code
+      exclude_online: true         # drops any job mentioning online, Zoom or virtual
+      exclude_keywords: ["female tutor only"]
+
+  - name: friend                   # rename to your friend's name (and use it in CHAT_IDS)
+    criteria:
+      levels: [P4, P5, P6, Primary 4, Primary 5, Primary 6, Pri 4, Pri 5, Pri 6]
+      subjects: [Math, Maths, Mathematics, Science, English]
+      locations:
+        postal_prefixes: ["47"]
+        towns: [Bedok, Eunos]
+      exclude_online: true
+      exclude_keywords: ["NIE teacher", "MOE teacher", "MOE/NIE"]

@@ -18,14 +18,20 @@ No server, no database and no Telegram login: posts are read from each channel's
    It prints a number, which is your chat ID.
 4. **Add two repo secrets** in GitHub: Settings → Secrets and variables → Actions → New repository secret.
    - `BOT_TOKEN`: the token from step 1
-   - `CHAT_ID`: the number from step 3
+   - `CHAT_ID`: the number from step 3 (used for the first person in `config.yaml`)
+   - `CHAT_IDS` (optional): one `name: id` line per extra person
 5. **Test it.** Actions tab → *Daily tuition digest* → **Run workflow**. You should get a DM within a minute.
 
 After that it runs every day at 8 AM Singapore time. Neither secret expires.
 
 ## Changing what you get
 
-- **Criteria:** edit `criteria` in `config.yaml`. The next run uses it.
+- **Criteria:** each person under `users` in `config.yaml` has their own `criteria`. The next run uses it.
+- **Adding a friend:** (1) they open the bot in Telegram and press **Start**; (2) open
+  `https://api.telegram.org/bot<TOKEN>/getUpdates` and find their `"chat":{"id":...}`; (3) add a
+  `name: id` line for them to the `CHAT_IDS` repo secret (re-enter every line, since secrets can't be
+  viewed); (4) add a `- name:` block for them under `users` in `config.yaml`. People without a chat
+  ID are skipped.
 - **Channels:** edit `sources` in `config.yaml`. Only public channels with a username work.
 - **Smarter matching:** rewrite `matches()` in `filters.py`. Nothing else needs to change.
 - **Time:** edit the `cron` line in `.github/workflows/digest.yml` (it's in UTC, so 8 AM SGT is `0 0 * * *`).

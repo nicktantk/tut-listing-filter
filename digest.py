@@ -87,16 +87,33 @@ def send(messages: list[str], token: str, chat_id: str) -> None:
             raise RuntimeError(f"Telegram sendMessage failed: {resp.status_code} {resp.text}")
 
 
+def load_chat_ids(users: list[dict]) -> dict[str, str]:
+    """Chat IDs come from secrets, so they never appear in this (public) repo.
+
+    CHAT_IDS holds one "name: id" line per person. The first person in config.yaml
+    also falls back to the older single CHAT_ID secret.
+    """
+    ids = {}
+    raw = os.environ.get("CHAT_IDS", "").strip()
+    if raw:
+        parsed = yaml.safe_load(raw) or {}
+        ids = {str(k).strip().lower(): str(v).strip() for k, v in parsed.items() if v}
+    first = str(users[0]["name"]).lower() if users else None
+    if first and first not in ids and os.environ.get("CHAT_ID"):
+        ids[first] = os.environ["CHAT_ID"].strip()
+    return ids
+
+
 def main() -> int:
     token = os.environ["BOT_TOKEN"]
-    chat_id = os.environ["CHAT_ID"]
     config = yaml.safe_load(CONFIG_PATH.read_text())
-    criteria = config.get("criteria", {})
+    users = config.get("users", [])
+    chat_ids = load_chat_ids(users)
     state = load_state()
     now = datetime.now(timezone.utc)
 
     new_state = dict(state)
-    matched: list[Post] = []
+    matched: dict[str, list[Post]] = {u["name"]: [] for u in users}
     checked = 0
     failed: list[str] = []
     capped_channels: list[str] = []
@@ -112,25 +129,40 @@ def main() -> int:
         checked += len(posts)
         for post in posts:
             # A post can hold several jobs; match and show each one on its own.
-            matched += [job for job in (replace(post, text=t) for t in split_jobs(post.text)) if matches(job, criteria)]
+            jobs = [replace(post, text=t) for t in split_jobs(post.text)]
+            for user in users:
+                matched[user["name"]] += [j for j in jobs if matches(j, user.get("criteria", {}))]
         if next_id is not None:
             new_state[key] = next_id
         if capped:
             capped_channels.append(channel)
         print(f"{channel}: {len(posts)} new{' (page cap reached, older posts skipped)' if capped else ''}")
 
-    messages = build_messages(matched, checked, now)
-    if failed:
-        messages[-1] += "\n\nCouldn't read: " + ", ".join(html.escape(c) for c in failed)
-    if capped_channels:
-        messages[-1] += (
-            "\n\nToo many posts to read them all in: "
-            + ", ".join(html.escape(c) for c in capped_channels)
-            + ". Consider running more often."
-        )
-    send(messages, token, chat_id)
+    sent_any = False
+    for i, user in enumerate(users):
+        name = user["name"]
+        chat_id = chat_ids.get(str(name).lower())
+        if not chat_id:
+            print(f"Skipping {name}: no chat ID yet (add '{name}: <id>' to the CHAT_IDS secret)")
+            continue
+        messages = build_messages(matched[name], checked, now)
+        if i == 0:  # problems are only reported to the first person (the admin)
+            if failed:
+                messages[-1] += "\n\nCouldn't read: " + ", ".join(html.escape(c) for c in failed)
+            if capped_channels:
+                messages[-1] += (
+                    "\n\nToo many posts to read them all in: "
+                    + ", ".join(html.escape(c) for c in capped_channels)
+                    + ". Consider running more often."
+                )
+        send(messages, token, chat_id)
+        sent_any = True
+        print(f"Sent {name} {len(matched[name])} matches from {checked} posts.")
+
+    if not sent_any:
+        print("No one has a chat ID, so nothing was sent and state was not saved.", file=sys.stderr)
+        return 1
     save_state(new_state)
-    print(f"Sent {len(matched)} matches from {checked} posts.")
     return 0
 
 
