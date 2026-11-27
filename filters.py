@@ -16,15 +16,16 @@ ONLINE = re.compile(r"(?<![A-Za-z])(online|zoom|virtual)(?![A-Za-z])", re.I)
 
 
 def _location_ok(text: str, loc: dict) -> bool:
-    prefixes = [str(p) for p in loc.get("postal_prefixes", [])]
+    """Postal code wins: if the job has one, only the prefixes count.
+    Town names are a fallback for jobs that give a street but no postal code."""
+    prefixes = tuple(str(p) for p in loc.get("postal_prefixes", []))
     towns = loc.get("towns", [])
     if not prefixes and not towns:
         return True
-    if prefixes and any(code.startswith(tuple(prefixes)) for code in POSTAL_CODE.findall(text)):
-        return True
-    if towns and _keyword_pattern(towns).search(text):
-        return True
-    return False
+    codes = POSTAL_CODE.findall(text)
+    if codes and prefixes:
+        return any(code.startswith(prefixes) for code in codes)
+    return bool(towns) and bool(_keyword_pattern(towns).search(text))
 
 
 def matches(post, criteria: dict) -> bool:

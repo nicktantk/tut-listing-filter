@@ -16,8 +16,8 @@ criteria:
   levels: [P4, P5, P6, Primary 4, Primary 5, Primary 6, Pri 4, Pri 5, Pri 6]  
   subjects: [Math, Maths, Mathematics, Science, English]
   locations:
-    postal_prefixes: ["47"]    # Pasir Ris, 51xxxx
-    towns: [Bedok, Eunos]         # for posts that give a street but no postal code
+    postal_prefixes: ["47"]    # used whenever the job gives a postal code
+    towns: [Bedok, Eunos]      # only used when the job has no postal code
   exclude_online: true         # drops any post mentioning online, Zoom or virtual
   exclude_keywords: ["NIE teacher", "MOE teacher", "MOE/NIE"]
   # No minimum rate: rates are negotiable.

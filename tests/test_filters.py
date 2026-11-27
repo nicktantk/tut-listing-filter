@@ -53,3 +53,10 @@ def test_female_tutor_only_rejected():
 
 def test_jc_inside_other_word_not_matched():
     assert not matches(p("ABJCD Math\nPasir Ris (518090)"), CRITERIA)
+
+
+def test_postal_code_outranks_town_name():
+    crit = {"locations": {"postal_prefixes": ["47"], "towns": ["Bedok"]}}
+    assert not matches(p("P5 Science\n166 Bedok South Avenue 3 (S)460166"), crit)
+    assert matches(p("P5 Science\n629 Bedok Reservoir Rd (S)470629"), crit)
+    assert matches(p("P5 Science\nBedok North Ave 3, near MRT"), crit)
