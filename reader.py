@@ -1,0 +1,103 @@
+"""Read posts from a public Telegram channel's web preview (https://t.me/s/<channel>).
+
+No Telegram login is needed. Only public channels with a @username have a preview.
+All HTML parsing lives in parse_page(), so a change to Telegram's markup is fixed here.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Optional
+
+import requests
+from bs4 import BeautifulSoup
+
+PREVIEW_URL = "https://t.me/s/{channel}"
+USER_AGENT = "Mozilla/5.0 (compatible; tuition-digest/1.0)"
+MAX_PAGES = 10  # safety cap per channel per run (about 20 posts a page)
+
+
+@dataclass
+class Post:
+    channel: str
+    id: int
+    date: Optional[datetime]
+    text: str
+    link: str
+
+
+def parse_page(html: str, channel: str) -> list[Post]:
+    """Return the posts on one preview page, in page order (oldest first)."""
+    soup = BeautifulSoup(html, "html.parser")
+    posts: list[Post] = []
+    for msg in soup.select("div.tgme_widget_message[data-post]"):
+        data_post = msg["data-post"]  # e.g. "sgTuitions/175643"
+        try:
+            msg_id = int(data_post.rsplit("/", 1)[1])
+        except (IndexError, ValueError):
+            continue
+
+        # The post's own text, not the text of a message it replies to.
+        text_div = None
+        for div in msg.select("div.tgme_widget_message_text"):
+            if not div.find_parent(class_="tgme_widget_message_reply"):
+                text_div = div
+                break
+        text = text_div.get_text("\n", strip=True) if text_div else ""
+
+        date = None
+        time_tag = msg.select_one("a.tgme_widget_message_date time[datetime]")
+        if time_tag:
+            try:
+                date = datetime.fromisoformat(time_tag["datetime"])
+            except ValueError:
+                date = None
+
+        posts.append(
+            Post(
+                channel=channel,
+                id=msg_id,
+                date=date,
+                text=text,
+                link=f"https://t.me/{data_post}",
+            )
+        )
+    posts.sort(key=lambda p: p.id)
+    return posts
+
+
+def fetch_page(channel: str, before: Optional[int] = None, session=None) -> str:
+    http = session or requests
+    params = {"before": before} if before else None
+    resp = http.get(
+        PREVIEW_URL.format(channel=channel),
+        params=params,
+        headers={"User-Agent": USER_AGENT},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.text
+
+
+def fetch_new_posts(channel: str, after_id: int, fetch=fetch_page) -> list[Post]:
+    """All posts with id > after_id, oldest first. Pages back with ?before= as needed."""
+    found: dict[int, Post] = {}
+    before = None
+    for _ in range(MAX_PAGES):
+        page = parse_page(fetch(channel, before), channel)
+        if not page:
+            break
+        for post in page:
+            if post.id > after_id:
+                found[post.id] = post
+        oldest = page[0].id
+        if oldest <= after_id + 1:
+            break
+        before = oldest
+    return [found[i] for i in sorted(found)]
+
+
+def latest_posts(channel: str, fetch=fetch_page) -> list[Post]:
+    """The newest page of posts, used to start tracking a channel."""
+    return parse_page(fetch(channel, None), channel)
