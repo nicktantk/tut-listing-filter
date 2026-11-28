@@ -16,6 +16,8 @@ sources:
 # one "name: id" line per person, using the same name as below.
 # The first person also uses the older CHAT_ID secret if they're not in CHAT_IDS.
 # Anyone without a chat ID is skipped.
+# Home postal codes (for the "km away" line) live in the HOME_POSTALS secret, also
+# one "name: postal code" line per person, so home addresses aren't public either.
 #
 # How each filter works: every list matches any one of its words, as a whole word,
 # ignoring case. Delete a line to switch that filter off.

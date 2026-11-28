@@ -6,6 +6,15 @@ on:
     - cron: "7 0 * * *"    # 8:07 AM Singapore time
     - cron: "37 1 * * *"   # 9:37 AM backup; skipped if the 8 AM digest went out
   workflow_dispatch:      # "Run workflow" button for testing
+    inputs:
+      dry_run:
+        description: "Dry run: print digests in the log instead of sending them"
+        type: boolean
+        default: false
+      full_day:
+        description: "Ignore saved state and read the last 24 hours"
+        type: boolean
+        default: false
 
 concurrency:
   group: digest
@@ -28,6 +37,9 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           CHAT_IDS: ${{ secrets.CHAT_IDS }}
+          HOME_POSTALS: ${{ secrets.HOME_POSTALS }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          FULL_DAY: ${{ inputs.full_day }}
       - name: Save state
         run: |
           git config user.name "digest-bot"
