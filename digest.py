@@ -88,20 +88,25 @@ def send(messages: list[str], token: str, chat_id: str) -> None:
             raise RuntimeError(f"Telegram sendMessage failed: {resp.status_code} {resp.text}")
 
 
+def _parse_ids(raw: str) -> dict[str, str]:
+    parsed = yaml.safe_load(raw) if raw.strip() else None
+    if isinstance(parsed, dict):
+        return {str(k).strip().lower(): str(v).strip() for k, v in parsed.items() if v}
+    return {}
+
+
 def load_chat_ids(users: list[dict]) -> dict[str, str]:
     """Chat IDs come from secrets, so they never appear in this (public) repo.
 
-    CHAT_IDS holds one "name: id" line per person. The first person in config.yaml
-    also falls back to the older single CHAT_ID secret.
+    Either secret, CHAT_IDS or CHAT_ID, can hold one "name: id" line per person.
+    CHAT_ID can also be just a number, which goes to the first person in config.yaml.
     """
-    ids = {}
-    raw = os.environ.get("CHAT_IDS", "").strip()
-    if raw:
-        parsed = yaml.safe_load(raw) or {}
-        ids = {str(k).strip().lower(): str(v).strip() for k, v in parsed.items() if v}
+    single = os.environ.get("CHAT_ID", "").strip()
+    ids = _parse_ids(single)
+    ids.update(_parse_ids(os.environ.get("CHAT_IDS", "")))
     first = str(users[0]["name"]).lower() if users else None
-    if first and first not in ids and os.environ.get("CHAT_ID"):
-        ids[first] = os.environ["CHAT_ID"].strip()
+    if first and first not in ids and single and not _parse_ids(single):
+        ids[first] = single
     return ids
 
 

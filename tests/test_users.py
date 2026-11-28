@@ -19,3 +19,9 @@ def test_chat_ids_secret_wins_over_chat_id(monkeypatch):
     monkeypatch.setenv("CHAT_ID", "111")
     monkeypatch.setenv("CHAT_IDS", "nicholas: 333")
     assert load_chat_ids(USERS)["nicholas"] == "333"
+
+
+def test_name_lines_in_chat_id_secret(monkeypatch):
+    monkeypatch.setenv("CHAT_ID", "nicholas: 111\nchloe: 1003228034")
+    monkeypatch.delenv("CHAT_IDS", raising=False)
+    assert load_chat_ids(USERS) == {"nicholas": "111", "chloe": "1003228034"}
