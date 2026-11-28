@@ -22,7 +22,7 @@ No server, no database and no Telegram login: posts are read from each channel's
    - `CHAT_IDS` (optional): one `name: id` line per extra person
 5. **Test it.** Actions tab → *Daily tuition digest* → **Run workflow**. You should get a DM within a minute.
 
-After that it runs every day at 8 AM Singapore time. Neither secret expires.
+After that it runs every day at about 8 AM Singapore time, with a 9:37 AM backup run that only sends if the first one didn't. Neither secret expires.
 
 ## Changing what you get
 
@@ -34,7 +34,7 @@ After that it runs every day at 8 AM Singapore time. Neither secret expires.
   ID are skipped.
 - **Channels:** edit `sources` in `config.yaml`. Only public channels with a username work.
 - **Smarter matching:** rewrite `matches()` in `filters.py`. Nothing else needs to change.
-- **Time:** edit the `cron` line in `.github/workflows/digest.yml` (it's in UTC, so 8 AM SGT is `0 0 * * *`).
+- **Time:** edit the `cron` line in `.github/workflows/digest.yml` (it's in UTC, so 8:07 AM SGT is `7 0 * * *`).
 
 ## How it works
 

@@ -27,6 +27,7 @@ STATE_PATH = ROOT / "state.json"
 SGT = timezone(timedelta(hours=8))
 TELEGRAM_LIMIT = 4000  # Telegram allows 4096 characters per message
 PREVIEW_LINES = 6
+LAST_SENT = "_last_sent"  # date of the last digest, kept in state.json
 
 
 def load_state() -> dict[str, int]:
@@ -111,6 +112,13 @@ def main() -> int:
     chat_ids = load_chat_ids(users)
     state = load_state()
     now = datetime.now(timezone.utc)
+    today = now.astimezone(SGT).date().isoformat()
+
+    # The schedule fires twice as a backup, since GitHub sometimes drops scheduled runs.
+    # A scheduled run does nothing if today's digest already went out.
+    if os.environ.get("GITHUB_EVENT_NAME") == "schedule" and state.get(LAST_SENT) == today:
+        print(f"Today's digest ({today}) was already sent; nothing to do.")
+        return 0
 
     new_state = dict(state)
     matched: dict[str, list[Post]] = {u["name"]: [] for u in users}
@@ -162,6 +170,7 @@ def main() -> int:
     if not sent_any:
         print("No one has a chat ID, so nothing was sent and state was not saved.", file=sys.stderr)
         return 1
+    new_state[LAST_SENT] = today
     save_state(new_state)
     return 0
 

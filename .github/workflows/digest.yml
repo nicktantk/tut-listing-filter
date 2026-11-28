@@ -2,7 +2,9 @@ name: Daily tuition digest
 
 on:
   schedule:
-    - cron: "0 0 * * *"   # 8 AM Singapore time (cron runs in UTC)
+    # Times are UTC. Off the hour because GitHub drops many runs scheduled at :00.
+    - cron: "7 0 * * *"    # 8:07 AM Singapore time
+    - cron: "37 1 * * *"   # 9:37 AM backup; skipped if the 8 AM digest went out
   workflow_dispatch:      # "Run workflow" button for testing
 
 concurrency:
